@@ -27,6 +27,8 @@ from PyQt6.QtGui import (
 from config import configs
 import sys
 from math import floor
+from initialise import initialise
+import shutil
 
 from widgets.middleSection.createPlaylistWidget import CreatePlaylistWidget
 from widgets.middleSection.downloadMusicWidget import DownloadMusicWidget
@@ -110,8 +112,12 @@ class MainWindow(QMainWindow):
     self.rightLayout.addWidget(self.shuffleButton)
 
     # Create playlist button
+    def playlistButtonPressed(self):
+      self.stackedWidget.setCurrentIndex(0)
+      self.playlistCreation.readMusic()
+    
     self.createPlaylistButton = CreatePlaylistButton()
-    self.createPlaylistButton.CREATEPRESSED.connect(lambda: self.stackedWidget.setCurrentIndex(0))
+    self.createPlaylistButton.CREATEPRESSED.connect(lambda: playlistButtonPressed(self))
     self.rightLayout.addWidget(self.createPlaylistButton)
 
     # Download button
@@ -194,12 +200,22 @@ class MainWindow(QMainWindow):
 
     # Signals Recieved
     self.worker.signals.STATUS.connect(lambda status: self.musicDownload.statusLabel.setText(status))
-    self.worker.signals.URL_FOUND.connect(lambda status: self.musicDownload.addSong(status))
     self.worker.signals.FINISHED.connect(lambda: self.finishedRunning(""))
-    self.worker.signals.UPDATE_PROGRESS.connect(lambda value: self.musicDownload.progressBar.setValue(value))
+    self.worker.signals.UPDATE_PROGRESS.connect(lambda data: self.downloadSuccessful(data[1], data[0]))
+    self.worker.signals.FAILED_DOWNLOAD.connect(lambda index: self.downloadFailed(index))
 
     self.threadPool.start(self.worker)
 
+  def downloadFailed(self, index):
+    self.musicDownload.songWidgetList[index].title.setStyleSheet(
+      "color: rgb(100, 0, 0); font-size: 20px"
+    )
+  def downloadSuccessful(self, index, value):
+    self.musicDownload.progressBar.setValue(value)
+    self.musicDownload.songWidgetList[index].title.setStyleSheet(
+      "color: rgb(0, 100, 0); font-size: 20px"
+    )
+  
   # Executes when the window closes
   def closeEvent(self, event):
     if hasattr(self, "worker"):
@@ -212,6 +228,9 @@ class MainWindow(QMainWindow):
     QApplication.quit()
 
 if __name__ == "__main__":
+  initialise()
+  shutil.rmtree("cache", ignore_errors=True)
+
   app = QApplication(sys.argv)
   window = MainWindow()
   window.show()
