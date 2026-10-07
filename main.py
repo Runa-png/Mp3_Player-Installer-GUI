@@ -161,6 +161,12 @@ class MainWindow(QMainWindow):
 
     self.threadPool = QThreadPool()
     self.threadRunning = False
+
+    # ---------
+    # VARIABLES 
+    # ---------
+
+    self.playlist = {}
   
   # Executes when the app has finished searching
   def finishedRunning(self, text):

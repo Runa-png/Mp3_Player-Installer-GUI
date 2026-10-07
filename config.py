@@ -30,3 +30,8 @@ class configs:
   class downloadSettingsWindow:
     background_color = "rgb(50,50,100)"
     main_layout_color = "rgb(25,25,50)"
+  
+  class createPlaylistStackedWindow:
+    background_color = "rgb(10,10,30)"
+    song_Widget_Background_color = "rgb(15,15,40)"
+    add_Button_Color = "rgb(20,20,50)"

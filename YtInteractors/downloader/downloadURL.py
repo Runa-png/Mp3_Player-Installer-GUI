@@ -1,5 +1,4 @@
 import yt_dlp
-
 def downloadURL(url, options):
   # These are error messages that will break the loop
   error_messages = (

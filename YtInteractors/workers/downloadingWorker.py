@@ -14,6 +14,9 @@ from math import floor
 
 from ..downloader.downloadURL import downloadURL
 
+from YtInteractors.downloader.writeAlbumArt import writeAlbumArt
+
+
 import shutil
 import os
 
@@ -35,7 +38,6 @@ class downloadFileWorker(QRunnable):
   
   @pyqtSlot()
   def run(self):
-    print(len(self.data))
     length = len(self.data)
     count = 0
 
@@ -44,39 +46,42 @@ class downloadFileWorker(QRunnable):
     
     cachedData = []
     for index in self.data:
-      print(self.data[index])
+      print("The CSVArtist is ", self.data[index]["CSVArtist"])
       
       # Stop when the mainWindow is closed
       if self.stopEvent:
         return
       
       # Don't download if the song has already been downloaded
-      exists = cursor.execute("SELECT * FROM songs WHERE name = ? AND artist = ?", (self.data[index]["title"], self.data[index]["artist"])).fetchone()
-      
+      exists = cursor.execute("SELECT * FROM songs WHERE name = ? AND artist = ?", (self.data[index]["title"], self.data[index]["CSVArtist"])).fetchone()
+      print(exists)
+
       self.options = {
         "cookiesfrombrowser": ("firefox",),
         "format": "bestaudio/best",
         "outtmpl": f'{self.output}/{self.data[index]["title"]}.%(ext)s',
         "quiet": True,
-        "writethumbnail": True,
         "postprocessors": [
             {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                "preferredquality": "192",
-            },
-            {
-                "key": "EmbedThumbnail",
-            },
+              "key": "FFmpegExtractAudio",
+              "preferredcodec": "mp3",
+              "preferredquality": "192",
+            }
         ],
       }
       
       if not exists:
+        print(self.data)
         response = downloadURL(self.data[index]["url"], self.options)
 
         if response["successful"]:
           # Store the name and artist for adding to the database
-          newCacheStatus = {"name": self.data[index]["title"], "artist": self.data[index]["artist"], "filename": self.data[index]["title"] + ".mp3"}
+          print(self.data[index])
+          
+          fileLocation = "cache/" + self.data[index]["title"] + ".mp3"
+          writeAlbumArt(fileLocation, self.data[index]["albumUrl"])
+
+          newCacheStatus = {"name": self.data[index]["title"], "artist": self.data[index]["CSVArtist"], "filename": self.data[index]["title"] + ".mp3", "albumArt": self.data[index]["albumUrl"]}
           cachedData.append(newCacheStatus)
         else:
           print("Failed to download")
@@ -97,7 +102,7 @@ class downloadFileWorker(QRunnable):
         fileDestination = self.config.CreatePlaylist.musicLocation + "/" + cached["filename"]
 
         shutil.copy2(fileLocation, fileDestination)
-        cursor.execute("INSERT INTO songs (name, artist, location) VALUES (?,?,?)", (cached["name"], cached["artist"], fileDestination))
+        cursor.execute("INSERT INTO songs (name, artist, location, albumArt) VALUES (?,?,?,?)", (cached["name"], cached["artist"], fileDestination, cached["albumArt"]))
 
       connection.commit()
       connection.close()

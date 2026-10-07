@@ -16,15 +16,15 @@ def getVideoUrl(self, dataframe, index):
   controller = controls()
   
   with yt_dlp.YoutubeDL(options) as ydl:
+    print(dataframe)
     songName = dataframe["Song"]
     songArtists = dataframe["Artist"].split(",")
 
     # Iterate over each song artist
     artistResults = []
     for artist in songArtists:
-      audio = ""
-      attempts = 0
-      while not audio:
+      audio = None
+      while audio is None:
         query = songName + " " + artist
 
         try:
@@ -34,8 +34,7 @@ def getVideoUrl(self, dataframe, index):
           )
           audio = results.get("entries", [])
         except Exception as e:
-          attempts += 1
-          time.sleep(2 * attempts)
+          print(e)
 
       # Iterate over each audio search result
       for audioInstance in audio:
@@ -51,13 +50,17 @@ def getVideoUrl(self, dataframe, index):
         resultLog = {"ratio": totalRatio, "id": resultID, "name": songName, "artist": resultArtist}
         artistResults.append(resultLog)
     
+  if artistResults:
     # Find the highest ratio
     bestMatch = {"ratio": -1}
     for ratio in artistResults:
       if ratio["ratio"] >= bestMatch["ratio"]:
         bestMatch = ratio
+    
     bestMatch["confident"] = controller.weightNeeded <= bestMatch["ratio"]
     bestMatch["id"] = "https://www.youtube.com/watch?v=" + bestMatch["id"]
     bestMatch["index"] = index
+    bestMatch["CSVArtist"] = dataframe["Artist"]
+    bestMatch["albumImageLocation"] = dataframe["Spotify Track Id"]
 
     self.signals.URL_FOUND.emit(bestMatch)

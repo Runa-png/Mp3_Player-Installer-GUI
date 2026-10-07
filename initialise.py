@@ -5,7 +5,7 @@ def initialise():
   cursor = connection.cursor()
 
   # Create tables
-  cursor.execute("CREATE TABLE IF NOT EXISTS songs (name, artist, location)")
+  cursor.execute("CREATE TABLE IF NOT EXISTS songs (name, artist, location, albumArt)")
 
   connection.commit()
   connection.close()
