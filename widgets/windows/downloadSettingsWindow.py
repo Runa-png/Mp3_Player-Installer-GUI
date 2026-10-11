@@ -35,7 +35,7 @@ class DownloadSettingsWindow(QWidget):
     self.mainWidget.setStyleSheet(f"background-color: {config.downloadSettingsWindow.main_layout_color}")
     self.mainLayout = QVBoxLayout(self.mainWidget)
 
-    print(str(self.parentWindow.songData[index]))
+    (str(self.parentWindow.songData[index]))
 
     data = self.parentWindow.songData[index]
 

@@ -35,3 +35,8 @@ class configs:
     background_color = "rgb(10,10,30)"
     song_Widget_Background_color = "rgb(15,15,40)"
     add_Button_Color = "rgb(20,20,50)"
+  
+  class toolTip:
+    text_color = "rgb(255,255,255)"
+    background_color = "rgb(50,50,100)"
+    font_size = 20

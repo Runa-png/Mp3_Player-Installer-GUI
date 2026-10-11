@@ -16,7 +16,7 @@ def getVideoUrl(self, dataframe, index):
   controller = controls()
   
   with yt_dlp.YoutubeDL(options) as ydl:
-    print(dataframe)
+    (dataframe)
     songName = dataframe["Song"]
     songArtists = dataframe["Artist"].split(",")
 
@@ -62,5 +62,6 @@ def getVideoUrl(self, dataframe, index):
     bestMatch["index"] = index
     bestMatch["CSVArtist"] = dataframe["Artist"]
     bestMatch["albumImageLocation"] = dataframe["Spotify Track Id"]
+    bestMatch["albumName"] = dataframe["Album"]
 
     self.signals.URL_FOUND.emit(bestMatch)

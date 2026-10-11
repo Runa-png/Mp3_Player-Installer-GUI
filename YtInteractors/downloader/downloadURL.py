@@ -18,7 +18,6 @@ def downloadURL(url, options):
         ydl.download(url)
         passed = True
     except Exception as e:
-      # Im really sorry
       if any(message in str(e) for message in error_messages):
         return {"successful": False}
   return {"successful": True}

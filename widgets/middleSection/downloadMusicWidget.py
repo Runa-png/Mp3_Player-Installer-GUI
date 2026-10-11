@@ -174,7 +174,7 @@ class DownloadMusicWidget(QWidget):
     
     index = data["index"]
 
-    self.songData[index] = {"title": data["name"], "artist": data["artist"], "url": data["id"], "confidence": data["confident"], "CSVArtist": data["CSVArtist"], "albumUrl": data["albumImageLocation"]}
+    self.songData[index] = {"title": data["name"], "artist": data["artist"], "url": data["id"], "confidence": data["confident"], "CSVArtist": data["CSVArtist"], "albumUrl": data["albumImageLocation"], "albumName": data["albumName"]}
 
     songWidget.buttonsWidget = QWidget()
     buttonsLayout = QHBoxLayout(songWidget.buttonsWidget)

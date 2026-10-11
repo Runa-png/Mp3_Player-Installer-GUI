@@ -10,6 +10,6 @@ def fileDataFetching(info: dict):
     return data
   
   # Filter required columns
-  CSV = data["csv"][["Song", "Artist", "Spotify Track Id"]]
+  CSV = data["csv"][["Song", "Artist", "Spotify Track Id", "Album"]]
   
   return {"status": True, "csv": CSV}

@@ -4,12 +4,15 @@ from PyQt6.QtWidgets import (
   QVBoxLayout,
   QHBoxLayout,
   QLabel,
-  QScrollArea
+  QScrollArea,
+  QLineEdit,
+  QComboBox
 )
 
 from PyQt6.QtCore import (
   Qt,
-  QSize
+  QSize,
+  pyqtSignal
 )
 
 from PyQt6.QtGui import (
@@ -18,6 +21,7 @@ from PyQt6.QtGui import (
 )
 
 from PlaylistInteractions.songController import songControl
+from PlaylistInteractions.calculateAccuracy import calculateAccuracy
 
 from YtInteractors.searcher.getAlbumImage import getAlbumImage
 
@@ -25,8 +29,13 @@ from config import configs
 import os
 import sqlite3
 import shutil
+import operator
 
 class CreatePlaylistWidget(QWidget):
+  ADDSONG = pyqtSignal(dict)
+  REMOVESONG = pyqtSignal(dict)
+  CREATEPLAYLIST = pyqtSignal()
+  
   def __init__(self):
     super().__init__()
 
@@ -34,8 +43,56 @@ class CreatePlaylistWidget(QWidget):
     self.config = configs()
 
     topLayout = QVBoxLayout(self)
-    titleLabel = QLabel("Create Playlist")
-    titleLabel.setStyleSheet("color: white; font-size: 25px; font-weight: 900; text-decoration: underline")
+    self.titleLabel = QLabel("Create Playlist")
+    self.titleLabel.setStyleSheet("color: white; font-size: 25px; font-weight: 900; text-decoration: underline")
+
+    # Search Bar
+    widgetHeight = 40
+    
+    self.playlistInteractionsWidget = QWidget()
+    self.playlistInteractionsWidget.setContentsMargins(0,0,0,0)
+    self.playlistInteractionsLayout = QHBoxLayout(self.playlistInteractionsWidget)
+    self.playlistInteractionsLayout.setContentsMargins(0,0,0,0)
+
+    self.playlistName = QLineEdit()
+    self.playlistName.setFixedHeight(widgetHeight)
+    self.playlistName.setPlaceholderText("Name of playlist")
+    self.playlistName.setStyleSheet("color: white; font-size: 20px")
+
+    self.createPlaylistButton = QPushButton("Create!")
+    self.createPlaylistButton.setFixedHeight(widgetHeight)
+    self.createPlaylistButton.setStyleSheet("color: white; font-size: 20px")
+    self.createPlaylistButton.setMinimumWidth(120)
+    self.createPlaylistButton.clicked.connect(lambda: self.CREATEPLAYLIST.emit())
+
+    self.playlistInteractionsLayout.addWidget(self.playlistName)
+    self.playlistInteractionsLayout.addWidget(self.createPlaylistButton)
+    
+    searchBarWidget = QWidget()
+    searchBarWidget.setFixedHeight(widgetHeight)
+    searchBarWidget.setContentsMargins(0,0,0,0)
+    searchBarLayout = QHBoxLayout(searchBarWidget)
+    searchBarLayout.setContentsMargins(0,0,0,0)
+
+    searchDropdown = QComboBox()
+    searchDropdown.setFixedHeight(widgetHeight)
+    searchDropdown.setMinimumWidth(120)
+    searchDropdown.setStyleSheet("font-size: 20px; color: white")
+    searchDropdown.addItem("Title")
+    searchDropdown.addItem("Artist")
+    searchDropdown.addItem("Album")
+    
+    searchBar = QLineEdit()
+    searchBar.setPlaceholderText(f"Name of {searchDropdown.currentText()}")
+    searchDropdown.currentTextChanged.connect(lambda: searchBar.setPlaceholderText(f"Name of {searchDropdown.currentText()}"))
+    searchBar.setFixedHeight(widgetHeight)
+    searchBar.setStyleSheet("font-size: 20px; color: white")
+    searchBar.editingFinished.connect(lambda: self.searchCompleted())
+
+    self.queryWidgets = {"searchBar": searchBar, "searchDropdown": searchDropdown}
+
+    searchBarLayout.addWidget(searchBar)
+    searchBarLayout.addWidget(searchDropdown)
 
     scrollableArea = QScrollArea()
     scrollableArea.setStyleSheet("border: none")
@@ -48,7 +105,9 @@ class CreatePlaylistWidget(QWidget):
 
     scrollableAreaContainerWidget.setStyleSheet(f"background-color: {self.config.createPlaylistStackedWindow.background_color}; border-radius: 20px")
     
-    topLayout.addWidget(titleLabel, alignment = Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignCenter)
+    topLayout.addWidget(self.titleLabel, alignment = Qt.AlignmentFlag.AlignTop | Qt.AlignmentFlag.AlignCenter)
+    topLayout.addWidget(self.playlistInteractionsWidget)
+    topLayout.addWidget(searchBarWidget)
     topLayout.addWidget(scrollableArea, stretch=1)
 
     # Just run the search function
@@ -70,6 +129,7 @@ class CreatePlaylistWidget(QWidget):
       filename, fileExtension = os.path.splitext(location)
       # Nice try slipping in a txt file or something
       if fileExtension != ".mp3":
+        print("File extension incorrect")
         continue
 
       data = cursor.execute("SELECT * FROM songs WHERE location = ?", (location,)).fetchone()
@@ -77,8 +137,9 @@ class CreatePlaylistWidget(QWidget):
       title = data[0]
       artist = data[1]
       artLocation = data[3]
+      albumName = data[4]
       
-      newDataDict = {"title": title, "artist": artist, "location": location, "albumArt": artLocation}
+      newDataDict = {"title": title, "artist": artist, "location": location, "albumArt": artLocation, "albumName": albumName}
       songDataList.append(newDataDict)
     
     self.widgetList = {}
@@ -87,9 +148,8 @@ class CreatePlaylistWidget(QWidget):
     count = 0
     widgetHeight = 160
     # Iterate over each song in the list
+    
     for songDict in songDataList:
-      print(songDict)
-
       containerWidget = QWidget()
       containerWidget.setFixedHeight(widgetHeight)
       containerWidget.setContentsMargins(0,0,0,0)
@@ -108,14 +168,18 @@ class CreatePlaylistWidget(QWidget):
       informationLayout = QVBoxLayout(informationWidget)
 
       nameLabel = QLabel(songDict["title"])
-      nameLabel.setStyleSheet("color: rgb(255,255,255); font-size: 20px")
+      nameLabel.setStyleSheet("color: rgb(255,255,255); font-size: 25px")
       
       artistLabel = QLabel(songDict["artist"])
-      artistLabel.setStyleSheet("color: rgb(150,150,150); font-size: 15px")
+      artistLabel.setStyleSheet("color: rgb(150,150,150); font-size: 20px")
+
+      albumLabel = QLabel(songDict["albumName"])
+      albumLabel.setStyleSheet("color: rgb(100,100,100); font-size: 15px")
 
       informationLayout.addStretch()
       informationLayout.addWidget(nameLabel, alignment = Qt.AlignmentFlag.AlignBottom)
       informationLayout.addWidget(artistLabel, alignment = Qt.AlignmentFlag.AlignBottom)
+      informationLayout.addWidget(albumLabel, alignment = Qt.AlignmentFlag.AlignBottom)
 
       playlistButtonContainer = QWidget()
       playlistButtonContainer.setFixedWidth(150)
@@ -130,32 +194,24 @@ class CreatePlaylistWidget(QWidget):
       # Image
       icon = getAlbumImage(songDict["location"])
       iconLabel = QLabel()
-      iconLabel.setPixmap(icon.pixmap(300,300))
-
-
+      iconLabel.setPixmap(icon.pixmap(150,150))
+      iconLabel.setStyleSheet("border-radius: 15px")
 
       # Add widgets to the indexed dict
-      self.widgetList[count] = {"name": nameLabel, "artist": artistLabel, "button": playlistButton, "topWidget": containerWidget}
+      self.widgetList[count] = {
+        "name": nameLabel,
+        "artist": artistLabel,
+        "button": playlistButton,
+        "topWidget": containerWidget,
+        "fileLocation": songDict["location"],
+        "albumName": songDict["albumName"],
+        "songName": songDict["title"],
+        "artistName": songDict["artist"]
+      }
 
       containerLayout.addWidget(iconLabel)
-      containerLayout.addWidget(informationWidget)
+      containerLayout.addWidget(informationWidget, alignment = Qt.AlignmentFlag.AlignLeft, stretch=1)
       containerLayout.addWidget(playlistButtonContainer, alignment = Qt.AlignmentFlag.AlignRight)
-      
-      # nameContainer = QScrollArea()
-      # nameContainer.setStyleSheet("border: none")
-      # nameContainer.setWidgetResizable(True)
-      # nameLabel = QLabel(songDict["title"])
-      # nameLabel.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-      # nameLabel.setStyleSheet("color: white; font-size:15px; padding-left: 20px")
-      # nameContainer.setWidget(nameLabel)
-      
-      # artistContainer = QScrollArea()
-      # artistContainer.setStyleSheet("border: none")
-      # artistContainer.setWidgetResizable(True)
-      # artistLabel = QLabel(songDict["artist"])
-      # artistLabel.setAlignment(Qt.AlignmentFlag.AlignVCenter)
-      # artistLabel.setStyleSheet("color: white; font-size:15px")
-      # artistContainer.setWidget(artistLabel)
 
       # Use this for clicked status
       playlistButton.clickedStatus = False
@@ -163,7 +219,48 @@ class CreatePlaylistWidget(QWidget):
       # Add the song to the internal playlist
       playlistButton.clicked.connect(lambda _, index=count: songControl(self, index))
 
-      # Add the containerWidget to the main ScrollableLayout
-      self.scrollableAreaContainer.addWidget(containerWidget)
+      count += 1
+    
+    unsortedDataList = []
+    # Remove the indexes
+    for index in self.widgetList:
+      data = self.widgetList[index]
+      unsortedDataList.append(data)
+    
+    # Sort the widgetlist by album
+    sortedDataList = sorted(unsortedDataList, key=lambda item: item["albumName"].casefold())
+    (len(sortedDataList))
 
+    for sortedItem in sortedDataList:
+      # Add the containerWidget to the main ScrollableLayout
+      self.scrollableAreaContainer.addWidget(sortedItem["topWidget"])
+
+  def purgeWidgets(self):
+    for index in self.widgetList:
+      widget = self.widgetList[index]["topWidget"]
+      self.scrollableAreaContainer.removeWidget(widget)
+      widget.setParent(None)
+    self.widgetList = {}
+  
+  def reload(self):
+    self.purgeWidgets() # Remove Widgets
+    self.readMusic() # Add new iteration of widgets
+  
+  def searchCompleted(self):    
+    query = self.queryWidgets["searchBar"].text()
+    key = self.queryWidgets["searchDropdown"].currentText()
+
+    unsortedAccuracyList = []
+    for index in self.widgetList:
+      accuractDict = calculateAccuracy(data = self.widgetList[index], comparison = query, dictKey = key)
+      unsortedAccuracyList.append(accuractDict)
+    sortedAccuracyList = sorted(unsortedAccuracyList, key=lambda item: item["accuracy"], reverse=True)
+
+    self.purgeWidgets()
+
+    count = 0
+    for widget in sortedAccuracyList:
+      self.scrollableAreaContainer.addWidget(widget["topWidget"])
+      
+      self.widgetList[count] = (widget)
       count += 1
